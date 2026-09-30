@@ -19,13 +19,15 @@ A custom component for the Owlet smart sock
 1. 在 Home Assistant 開啟 `HACS` → `Integrations`。
 2. 點右上角 `⋮` → `Custom repositories`。
 3. Repository 填入 `https://github.com/yuen70103/fork_owlet`，Category 選 `Integration`，按 `Add`。
-4. 回到整合搜尋 `Owlet`，選取此 fork 後按 `Download`。
-5. 重新啟動 Home Assistant。
+4. 回到整合搜尋 `Owlet`，選擇顯示 `Owlet HA integration` 的自訂項目，按 `Download`；確認視窗再按一次 `Download`。
+5. 等待 HACS 顯示 `Pending restart`，再重新啟動 Home Assistant（`Settings` → `System` → `Restart Home Assistant`）。
 6. 開啟 `Settings` → `Devices & services` → `+ Add Integration`，搜尋 `Owlet Smart Sock`。
 7. 選擇 Owlet 帳號所在的 API region（`Europe` 或 `World`），輸入 Owlet 帳號電子郵件與密碼，完成設定。
 8. 在新建立的 Owlet 裝置頁確認心率、血氧、電量等 entities 已出現。
 
 此整合會依 manifest 自動安裝相容的 `pyowletapi==2025.4.10`，不需要另外 clone 或安裝 `fork_pyowletapi`。
+
+此 fork 已提供 HACS 所需的 `owlet.zip` release asset。若下載時出現 404，先在該 HACS repository 的 `⋮` 選單執行 `Update information`；若仍顯示舊的 commit，重新啟動 Home Assistant 後再按 `Download`。
 
 ### 手動安裝
 
