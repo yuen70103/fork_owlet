@@ -58,7 +58,9 @@ class OwletConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 session=async_get_clientsession(self.hass),
             )
 
-            await self.async_set_unique_id(user_input[CONF_USERNAME].lower())
+            await self.async_set_unique_id(
+                f"{user_input[CONF_REGION]}_{user_input[CONF_USERNAME].lower()}"
+            )
             self._abort_if_unique_id_configured()
 
             try:

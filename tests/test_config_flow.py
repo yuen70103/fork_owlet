@@ -238,3 +238,6 @@ async def test_flow_same_email_different_region(hass: HomeAssistant) -> None:
             await hass.async_block_till_done()
 
             assert result["type"] == FlowResultType.CREATE_ENTRY
+            assert result["result"].unique_id == (
+                f"{user_input['region']}_{user_input['username']}"
+            )
