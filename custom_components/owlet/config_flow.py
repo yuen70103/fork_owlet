@@ -8,14 +8,14 @@ from typing import Any
 
 from pyowletapi.api import OwletAPI
 from pyowletapi.exceptions import (
+    OwletAuthenticationError,
+    OwletConnectionError,
     OwletCredentialsError,
     OwletDevicesError,
-    OwletEmailError,
-    OwletPasswordError,
 )
 import voluptuous as vol
 
-from homeassistant import config_entries, exceptions
+from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 from homeassistant.const import (
     CONF_PASSWORD,
@@ -26,7 +26,7 @@ from homeassistant.const import (
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN, POLLING_INTERVAL
+from .const import DOMAIN, POLLING_INTERVAL, SUPPORTED_VERSIONS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,11 +42,8 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 class OwletConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Owlet Smart Sock."""
 
-    VERSION = 1
+    VERSION = 2
     reauth_entry: ConfigEntry | None = None
-
-    def __init__(self) -> None:
-        """Initialise config flow."""
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -66,15 +63,16 @@ class OwletConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             try:
                 token = await owlet_api.authenticate()
-                await owlet_api.validate_authentication()
+                devices = await owlet_api.get_devices(SUPPORTED_VERSIONS)
+                token = devices.get("tokens", token)
 
             except OwletDevicesError:
                 errors["base"] = "no_devices"
-            except OwletEmailError:
-                errors[CONF_USERNAME] = "invalid_email"
-            except OwletPasswordError:
-                errors[CONF_PASSWORD] = "invalid_password"
             except OwletCredentialsError:
+                errors["base"] = "invalid_credentials"
+            except OwletConnectionError:
+                errors["base"] = "cannot_connect"
+            except OwletAuthenticationError:
                 errors["base"] = "invalid_credentials"
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
@@ -85,7 +83,7 @@ class OwletConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     data={
                         CONF_REGION: user_input[CONF_REGION],
                         CONF_USERNAME: user_input[CONF_USERNAME],
-                        **token,
+                        **(token or {}),
                     },
                     options={CONF_SCAN_INTERVAL: POLLING_INTERVAL},
                 )
@@ -136,8 +134,10 @@ class OwletConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                     return self.async_abort(reason="reauth_successful")
 
-            except OwletPasswordError:
+            except (OwletAuthenticationError, OwletCredentialsError):
                 errors[CONF_PASSWORD] = "invalid_password"
+            except OwletConnectionError:
+                errors["base"] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Error reauthenticating")
 
@@ -151,10 +151,6 @@ class OwletConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle a options flow for owlet."""
 
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialise options flow."""
-        self.config_entry = config_entry
-
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -166,13 +162,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             {
                 vol.Required(
                     CONF_SCAN_INTERVAL,
-                    default=self.config_entry.options.get(CONF_SCAN_INTERVAL),
+                    default=self.config_entry.options.get(
+                        CONF_SCAN_INTERVAL, POLLING_INTERVAL
+                    ),
                 ): vol.All(vol.Coerce(int), vol.Range(min=5)),
             }
         )
 
         return self.async_show_form(step_id="init", data_schema=schema)
-
-
-class InvalidAuth(exceptions.HomeAssistantError):
-    """Error to indicate there is invalid auth."""

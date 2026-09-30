@@ -149,7 +149,7 @@ class OwletSensor(OwletBaseEntity, SensorEntity):
     def available(self) -> bool:
         """Return if entity is available."""
         return super().available and (
-            not self.sock.properties["charging"]
+            not self.sock.properties.get("charging", False)
             or self.entity_description.available_during_charging
         )
 
@@ -157,7 +157,7 @@ class OwletSensor(OwletBaseEntity, SensorEntity):
     def native_value(self) -> StateType:
         """Return sensor value."""
 
-        return self.sock.properties[self.entity_description.key]
+        return self.sock.properties.get(self.entity_description.key)
 
 
 class OwletSleepSensor(OwletSensor):
@@ -181,7 +181,7 @@ class OwletSleepSensor(OwletSensor):
     @property
     def native_value(self) -> StateType:
         """Return sensor value."""
-        return SLEEP_STATES[self.sock.properties["sleep_state"]]
+        return SLEEP_STATES.get(self.sock.properties.get("sleep_state", 0), "unknown")
 
 
 class OwletOxygenAverageSensor(OwletSensor):
@@ -209,11 +209,8 @@ class OwletOxygenAverageSensor(OwletSensor):
         return (
             super().available
             and (
-                not self.sock.properties["charging"]
+                not self.sock.properties.get("charging", False)
                 or self.entity_description.available_during_charging
             )
-            and (
-                self.sock.properties["oxygen_10_av"] >= 0
-                and self.sock.properties["oxygen_10_av"] <= 100
-            )
+            and 0 <= self.sock.properties.get("oxygen_10_av", -1) <= 100
         )

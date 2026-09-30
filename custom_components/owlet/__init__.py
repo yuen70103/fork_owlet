@@ -9,9 +9,8 @@ from pyowletapi.api import OwletAPI
 from pyowletapi.exceptions import (
     OwletAuthenticationError,
     OwletConnectionError,
+    OwletCredentialsError,
     OwletDevicesError,
-    OwletEmailError,
-    OwletPasswordError,
 )
 from pyowletapi.sock import Sock
 
@@ -27,12 +26,32 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import CONF_OWLET_EXPIRY, CONF_OWLET_REFRESH, DOMAIN, SUPPORTED_VERSIONS
+from .const import (
+    CONF_OWLET_EXPIRY,
+    CONF_OWLET_REFRESH,
+    DOMAIN,
+    POLLING_INTERVAL,
+    SUPPORTED_VERSIONS,
+)
 from .coordinator import OwletCoordinator
 
 PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR, Platform.SWITCH]
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate config entries to region-aware unique IDs."""
+    if entry.version == 1:
+        region = entry.data.get(CONF_REGION, "world")
+        if entry.unique_id:
+            unique_id = f"{region}_{entry.unique_id}"
+            hass.config_entries.async_update_entry(
+                entry, unique_id=unique_id, version=2
+            )
+        else:
+            hass.config_entries.async_update_entry(entry, version=2)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -53,7 +72,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         devices = await owlet_api.get_devices(SUPPORTED_VERSIONS)
 
-    except (OwletAuthenticationError, OwletEmailError, OwletPasswordError) as err:
+    except (OwletAuthenticationError, OwletCredentialsError) as err:
         _LOGGER.error("Credentials no longer valid, please setup owlet again")
         raise ConfigEntryAuthFailed(
             f"Credentials expired for {entry.data[CONF_USERNAME]}"
@@ -73,7 +92,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry, data={**entry.data, **devices["tokens"]}
         )
 
-    scan_interval = entry.options.get(CONF_SCAN_INTERVAL)
+    scan_interval = entry.options.get(CONF_SCAN_INTERVAL, POLLING_INTERVAL)
     coordinators = {
         device["device"]["dsn"]: OwletCoordinator(
             hass, Sock(owlet_api, device["device"]), scan_interval, entry

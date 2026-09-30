@@ -25,14 +25,14 @@ class OwletBaseEntity(CoordinatorEntity[OwletCoordinator], Entity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return the device info of the device."""
+        connections = {("mac", self.sock.mac)} if self.sock.mac else set()
         return DeviceInfo(
             identifiers={(DOMAIN, self.sock.serial)},
             name=f"Owlet Sock {self.sock.serial}",
-            connections={("mac", getattr(self.sock, "mac", "unknown"))},
+            connections=connections,
             suggested_area="Nursery",
             configuration_url="https://my.owletcare.com/",
-            manufacturer="Owlet Baby Care",
-            model=getattr(self.sock, "model", None),
-            sw_version=getattr(self.sock, "sw_version", None),
-            hw_version=getattr(self.sock, "hw_version", "3r8"),
+            manufacturer=MANUFACTURER,
+            model=self.sock.model or None,
+            sw_version=self.sock.sw_version or None,
         )

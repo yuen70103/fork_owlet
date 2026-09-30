@@ -3,16 +3,16 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
+from typing import Any
 
 from pyowletapi.exceptions import (
     OwletAuthenticationError,
-    OwletConnectionError,
     OwletError,
 )
 from pyowletapi.sock import Sock
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_EMAIL
+from homeassistant.const import CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -38,7 +38,7 @@ class OwletCoordinator(DataUpdateCoordinator):
         self.sock = sock
         self.config_entry: ConfigEntry = entry
 
-    async def _async_update_data(self) -> None:
+    async def _async_update_data(self) -> dict[str, Any]:
         """Fetch the data from the device."""
         try:
             properties = await self.sock.update_properties()
@@ -47,9 +47,10 @@ class OwletCoordinator(DataUpdateCoordinator):
                     self.config_entry,
                     data={**self.config_entry.data, **properties["tokens"]},
                 )
+            return properties
         except OwletAuthenticationError as err:
             raise ConfigEntryAuthFailed(
-                f"Authentication failed for {self.config_entry.data[CONF_EMAIL]}"
+                f"Authentication failed for {self.config_entry.data[CONF_USERNAME]}"
             ) from err
-        except (OwletError, OwletConnectionError) as err:
+        except OwletError as err:
             raise UpdateFailed(err) from err

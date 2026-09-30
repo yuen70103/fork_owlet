@@ -1,6 +1,10 @@
 # Changelog
 
 <!--next-version-placeholder-->
+## 2025.4.4 (2026-09-30)
+### Fix
+* Align with pyowletapi 2025.4.10, fix authentication and option-flow compatibility, and migrate region-aware config entry IDs.
+
 ## 2025.4.3 (2025-04-15)
 ### Fix
 * Changes to how the sensors are stored to solve the issue where only one device is added, thanks [`@MarjovanLier`](https://github.com/MarjovanLier). ([`1244bff`](https://github.com/ryanbdclark/owlet/commit/1244bffcb48d7337a9d7a0da518959fe4b31a230))
